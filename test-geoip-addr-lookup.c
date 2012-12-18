@@ -18,6 +18,7 @@ main(int argc, char **argv) {
   if(gir != NULL) {
     latitude = gir->latitude;
     longitude = gir->longitude;
+    printf("This product includes GeoLite data created by MaxMind, available from http://www.maxmind.com\n");
     printf("Latitude %f Longitude %f\n", latitude, longitude);
     GeoIPRecord_delete(gir);
   }

@@ -1,2 +1,3 @@
 1. Add the following attribution in the output
 "This product includes GeoLite data created by MaxMind, available from http://www.maxmind.com".
+2. Maxmind keep on updating the database. need to figure out how to always get the recent one
