@@ -1,0 +1,134 @@
+1. SCHEDULE 
+Here's a schedule for you. Let me know what you think.
+
+Week 1:
+- Install GeoIP (usually in distributions) and the GeoLiteCity database
+- Create a simple program that uses GeoIP to print out the coordinates
+for a given IP address in Json format. Don't forget the attribution in
+the output
+
+Skills learnt: Json format
+
+Week 2:
+- Install httpd/Apache web server
+- Modify the program from week 1 to work as a cgi-bin program
+
+Skills learnt: cgi-bin programming, httpd installation
+
+Week 3/4:
+- Implement synchronous functions to talk to the server implemented in
+week 2, inside geocode-glib
+- This includes having a "server" property on the object, to direct the
+service to a particular installation (default to the non-existent
+"geo.gnome.org")
+
+Skills learnt: GObject programming, API documentation
+
+Week 5:
+- Implement the asynchronous version of the service
+
+Skills learnt: GIO-style asynchronous programming
+
+Week 6:
+- Document for the service used in:
+http://mxr.mozilla.org/mozilla-central/source/dom/system/NetworkGeolocationProvider.js#165
+- Write example calls (using curl or gvfs-cat for example)
+
+Skills learnt: Javascript reading
+
+Week 7/8:
+- Write code to interrogate the Wi-Fi geolocation service
+
+Week 9-12:
+- Clean up, and allowance for slip-ups
+
+If time:
+- Add support for printing out the region name (rather than simply the
+coordinates) on the server side by parsing
+http://dev.maxmind.com/static/maxmind-region-codes.csv
+- Make it possible to translate those region names
+- Write test applications that uses the data from NetworkManager to get
+the surrounding Wi-Fi networks
+- Any of the TODO items in geocode-glib
+
+All the code must include tests for the test suite, API documentation,
+and example/test applications (as necessary).
+
+
+2. JSON Format 
+
+
+
+{"results" : [ {
+		"74.125.236.24" : [ {
+					"location" : {
+						"latitude" : "37.419201", 
+						"longitude" : "-122.057404"
+    					},
+   					"address" : {
+    						"cityname" : "",
+   						"region" : {
+       							"name" : "", 
+    							"code" : ""
+       						},    
+        					"country" : {
+            						"name" : "United States", 
+       							"code" : "US"
+            					},
+     						"postalcode" : "",
+     						"metrocode" : "",
+     						"areacode" : "",
+     						"continentcode" : ""
+   					},
+   					"timezone" : "",
+   					"organizationname" : "",
+   					"domainname" : "",
+					"attribution" : ""
+ 				    }
+				  ]
+		}
+       	     ]
+}
+
+{"results" : [ {
+	"74.125.236.24" : [ {
+		"location" : {
+			"latitude" : "37.419201", 
+			"longitude" : "-122.057404"
+		},
+		"address" : [
+			{
+				"name" : "",
+				"code" : "",
+				"type" : "city"
+			},
+			{
+				"name" : "", 
+				"code" : "",
+				"type" : "region" 
+			},    
+			{
+				"name" : "United States", 
+				"code" : "US",
+				"type" : "country"
+			},
+			{
+				"name" : "", 
+				"code" : "",
+				"type" : "postalcode"
+			},
+			{		
+				"name" : "", 
+				"code" : "",
+				"type" : "areacode"
+			},
+		],
+		"timezone" : "",
+		"organizationname" : "",
+		"domainname" : "",
+		"attribution" : ""
+	}
+	] // ip address
+}
+] // results
+} // final
