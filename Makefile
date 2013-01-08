@@ -4,7 +4,7 @@ CFLAGS= -g -c -Wall -I/usr/include/ -I/usr/include/json-glib-1.0 -I/home/satabdi
 LDFLAGS= -L/home/satabdi/src/myopt/gnome/lib -lGeoIP -ljson-glib-1.0 -lgobject-2.0 -lglib-2.0
 SOURCES= test-geoip-addr-lookup.c
 OBJECTS= $(SOURCES:.c=.o)
-EXECUTABLE= test-geoip-addr-lookup
+EXECUTABLE= test-geoip-addr-lookup.cgi
 
 
 all: $(SOURCES) $(EXECUTABLE)

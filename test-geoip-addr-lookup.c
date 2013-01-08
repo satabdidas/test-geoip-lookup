@@ -3,6 +3,8 @@
 #include "glib-object.h"
 #include "json-glib/json-glib.h"
 
+#define IPV4_LENGTH 15
+
 static const gchar *attribution_text = "This product includes GeoLite data created by MaxMind, available from http://www.maxmind.com\n";
 
 static void
@@ -23,14 +25,10 @@ add_json_object_for_address (JsonBuilder *builder, const char *name, const char 
   json_builder_end_object (builder);
 }
 
-static void
+static JsonBuilder*
 add_result_attr_to_json_tree (const char* ipaddress, GeoIPRecord *gir) {
   const char *timezone = NULL;
-  gchar *jsondata;
-  gsize length;
   JsonBuilder *builder;
-  JsonNode *node;
-  JsonGenerator *generator;
 
   builder = json_builder_new ();
 
@@ -87,41 +85,77 @@ add_result_attr_to_json_tree (const char* ipaddress, GeoIPRecord *gir) {
 
   json_builder_end_object (builder); /* end */
 
-  node = json_builder_get_root (builder);
-  g_object_unref (builder);
+  return builder;
+}
 
+static void
+print_json_data (JsonBuilder *builder) {
+  JsonNode *node;
+  JsonGenerator *generator;
+  gchar *json_data;
+  gsize length;
+
+  node = json_builder_get_root (builder);
+  
   generator = json_generator_new ();
   json_generator_set_root (generator, node);
-  jsondata = json_generator_to_data (generator, &length);
-  g_print ("%*s\n", (int)length, jsondata);
+  json_data = json_generator_to_data (generator, &length);
+  g_print ("%*s\n", (int)length, json_data);
 
-  g_free (jsondata);
+  g_free (json_data);
   json_node_free (node);
   g_object_unref (generator);
 }
 
-int 
-main (int argc, char **argv) {
+
+void
+geoip_addr_lookup (const char *ipaddress) {
   GeoIP *gi;
   GeoIPRecord *gir;
-  const char * ipaddress;
+  JsonBuilder *builder;
 
   g_type_init ();
-  ipaddress = argv[1];
-  gi = GeoIP_open ("./GeoLiteCity.dat", GEOIP_INDEX_CACHE);
+  /*TODO : need to correct the path*/
+  gi = GeoIP_open ("../www/GeoLiteCity.dat", GEOIP_INDEX_CACHE);
   if (gi == NULL) {
     printf ("ERROR opening database\n");
   }
-  gir = GeoIP_record_by_addr (gi, ipaddress);
 
+  gir = GeoIP_record_by_addr (gi, ipaddress);
   if (gir != NULL) {
     /* Add the result attributes to the Json tree
        at present only add the latitude and longitude
        of the place*/
-    add_result_attr_to_json_tree (ipaddress, gir);
-
+    builder = add_result_attr_to_json_tree (ipaddress, gir);
+    print_json_data (builder);
     GeoIPRecord_delete (gir);
+    g_object_unref (builder);
   }
   GeoIP_delete (gi);
+}
+
+
+int 
+main (void) {
+  char ipaddress[IPV4_LENGTH];
+  char *data = NULL;
+
+  printf ("Content-type: text/plain;charset=us-ascii\n\n");
+
+  data = getenv ("QUERY_STRING");
+  if (!data) {
+    printf ("<P>Error : parsing data");
+    return 0;
+  }
+  if (sscanf (data, "ip=%s", ipaddress) != 1) {
+    printf ("<P>Error : Invalid data.");
+    return 0;
+  }
+  if (!g_hostname_is_ip_address (ipaddress)) {
+    printf ("<P>Error : Invalid IP address format");
+    return 0;
+  }
+  
+  geoip_addr_lookup (ipaddress);
   return 0;
 }
