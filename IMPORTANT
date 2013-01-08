@@ -90,7 +90,10 @@ and example/test applications (as necessary).
        	     ]
 }
 
-{"results" : [ {
+[CURRENTLY USING THE FOLLOWING ONE]
+COMMENT : Keeping the the "results" member, in future we might include some other values like status etc.
+
+{"results" : {
 	"74.125.236.24" : [ {
 		"location" : {
 			"latitude" : "37.419201", 
@@ -127,8 +130,6 @@ and example/test applications (as necessary).
 		"organizationname" : "",
 		"domainname" : "",
 		"attribution" : ""
-	}
-	] // ip address
-}
-] // results
+	} ] // ip address
+} // results
 } // final

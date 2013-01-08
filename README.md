@@ -3,7 +3,7 @@ test-geoip-lookup
 
 1. Output in JSON Fomat
 
-{"results" : [ {
+{"results" : {
 	"74.125.236.24" : [ {
 		"location" : {
 			"latitude" : "37.419201", 
@@ -38,8 +38,6 @@ test-geoip-lookup
 		],
 		"timezone" : "",
 		"attribution" : ""
-	}
-	] // ip address
-}
-] // results
+	} ] // ip address
+} // results
 } // final
