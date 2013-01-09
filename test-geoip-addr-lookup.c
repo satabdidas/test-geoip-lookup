@@ -12,12 +12,14 @@ enum ERROR_CODES {
         PARSE_ERR = 0,
         INVALID_DATA_ERR,
         INVALID_IP_ADDRESS_ERR,
+	INVALID_ENTRY_ERR,
         DATABASE_ERR
 };
 static char *error_message_array [] = {
         "Can not parse the input",
         "Invalid data",
         "Invalid IP address format",
+	"Can not find the IP address in the database",
         "Can not open the database"
 };
 
@@ -130,9 +132,13 @@ print_json_data (JsonBuilder *builder)
 }
 
 static void
-print_error_in_json (int error_code)
+print_error_in_json (int error_code, const char *extra_info)
 {
-        g_print ("{\"results\":\"[error] %s\"}\n",error_message_array[error_code] );
+	g_print ("{\"results\":\"[error] %s",error_message_array[error_code]);
+	if (extra_info)
+		g_print (" - %s\"}\n", extra_info);
+	else
+		g_print ("\"}\n");
 }
 
 void
@@ -146,36 +152,40 @@ geoip_addr_lookup (const char *ipaddress)
         gi = GeoIP_open ("../www/GeoLiteCity.dat", GEOIP_INDEX_CACHE);
         if (gi == NULL)
         {
-                print_error_in_json (DATABASE_ERR);
+                print_error_in_json (DATABASE_ERR, NULL);
                 return;
         }
 
         gir = GeoIP_record_by_addr (gi, ipaddress);
-        if (gir != NULL)
+        if (gir == NULL)
         {
-                /* Add the result attributes to the Json tree
-                   at present only add the latitude and longitude
-                   of the place*/
-                builder = add_result_attr_to_json_tree (ipaddress, gir);
-                print_json_data (builder);
-                GeoIPRecord_delete (gir);
-                g_object_unref (builder);
-        }
+		print_error_in_json (INVALID_ENTRY_ERR, ipaddress);
+		return;
+	}
+	/* Add the result attributes to the Json tree
+	   at present only add the latitude and longitude
+	   of the place*/
+	builder = add_result_attr_to_json_tree (ipaddress, gir);
+	print_json_data (builder);
+	GeoIPRecord_delete (gir);
+	g_object_unref (builder);
+        
         GeoIP_delete (gi);
 }
 
 static gchar *
 get_ipaddress ()
 {
-        gchar *ipaddress, *value;
-        char *data = NULL;
+        gchar *ipaddress;
+        const gchar *data;
+	const gchar *value;
         GHashTable *table;
 	GInetAddress *inet_address;
         
-	data = getenv ("QUERY_STRING");
-        if (!data)
+	data = g_getenv ("QUERY_STRING");
+	if (data == NULL)
         {
-                print_error_in_json (PARSE_ERR);
+                print_error_in_json (PARSE_ERR, NULL);
                 return NULL;
         }
 
@@ -183,14 +193,18 @@ get_ipaddress ()
         value = g_hash_table_lookup (table, "ip");
         if (!value)
         {
-                print_error_in_json (INVALID_DATA_ERR);
-                return NULL;
+		value = g_getenv ("REMOTE_ADDR");
+		if (!value)
+		{
+			print_error_in_json (PARSE_ERR, NULL);
+			return NULL;
+		}
         }
 
 	inet_address = g_inet_address_new_from_string (value);
         if (!inet_address)
         {
-                print_error_in_json (INVALID_IP_ADDRESS_ERR);
+                print_error_in_json (INVALID_IP_ADDRESS_ERR, NULL);
                 return NULL;
         }
 	ipaddress = g_strdup (value);

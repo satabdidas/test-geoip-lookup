@@ -1,3 +1,6 @@
 1. Maxmind keep on updating the database. need to figure out how to always get the recent one
 2. Need to do something about the following -
    g_type_init is deprecated
+3. Adopt the script from http://git.gnome.org/browse/totem/tree/browser-plugin/tests/launch-web-server.sh
+to launch a web server locally for testing
+4. usage of g_inet_address_new_from_string
