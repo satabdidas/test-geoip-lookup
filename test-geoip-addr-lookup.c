@@ -209,8 +209,8 @@ get_ipaddress ()
         }
 	ipaddress = g_strdup (value);
 	g_hash_table_destroy (table);
+	g_object_unref (inet_address);
 	return ipaddress;
-//	return inet_address;
 }
 
 int 
