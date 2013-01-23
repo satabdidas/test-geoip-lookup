@@ -3,4 +3,3 @@
    g_type_init is deprecated
 3. Adopt the script from http://git.gnome.org/browse/totem/tree/browser-plugin/tests/launch-web-server.sh
 to launch a web server locally for testing
-4. integrate with geocode-glib
