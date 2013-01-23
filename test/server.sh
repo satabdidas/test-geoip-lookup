@@ -140,3 +140,35 @@ echo "################################################"
 unset QUERY_STRING
 export GEOIP_DATABASE_PATH=/home/satabdi/work/www/GeoLiteCity.dat
 $cgibinexec
+
+echo -e "\n"
+echo "################################################"
+echo "9.a. Test invalid ip address - (asfadfd) in QUERY STRING with GeoLiteCity.dat"
+echo "################################################"
+export QUERY_STRING=asfadfd
+export GEOIP_DATABASE_PATH=/home/satabdi/work/www/GeoLiteCity.dat
+$cgibinexec
+
+echo -e "\n"
+echo "################################################"
+echo "9.b. Test blank ip address in QUERY STRING with GeoLiteCity.dat"
+echo "################################################"
+export QUERY_STRING=""
+export GEOIP_DATABASE_PATH=/home/satabdi/work/www/GeoLiteCity.dat
+$cgibinexec
+
+echo -e "\n"
+echo "################################################"
+echo "9.c. Test invalid ip address - (asfadfd) in QUERY STRING with GeoIP.dat"
+echo "################################################"
+export QUERY_STRING=asfadfd
+unset GEOIP_DATABASE_PATH
+$cgibinexec
+
+echo -e "\n"
+echo "################################################"
+echo "9.d. Test blank ip address in QUERY STRING with GeoIP.dat"
+echo "################################################"
+export QUERY_STRING=""
+unset GEOIP_DATABASE_PATH
+$cgibinexec
