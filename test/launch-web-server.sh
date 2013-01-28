@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#! taken from http://git.gnome.org/browse/totem/tree/browser-plugin/tests/launch-web-server.sh with some necessary modifications
+# taken from http://git.gnome.org/browse/totem/tree/browser-plugin/tests/launch-web-server.sh with some necessary modifications
 
 # Port to listen on
 PORT=12345
