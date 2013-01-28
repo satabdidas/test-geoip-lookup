@@ -1,44 +1,38 @@
-#include "GeoIP.h"
-#include "GeoIPCity.h"
-#include "glib-object.h"
-#include "json-glib/json-glib.h"
-#include "libsoup/soup.h"
+/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
 
-#define IPV4_LENGTH 15
+#include <GeoIP.h>
+#include <GeoIPCity.h>
+#include <glib.h>
+#include <json-glib/json-glib.h>
+#include <libsoup/soup.h>
 
-static const gchar *attribution_text = "This product includes GeoLite data created by MaxMind, available from http://www.maxmind.com\n";
+static const char *attribution_text = "This product includes GeoLite data created by MaxMind, available from http://www.maxmind.com\n";
 
 enum ERROR_CODES {
-        PARSE_ERR = 0,
-        INVALID_DATA_ERR,
-        INVALID_IP_ADDRESS_ERR,
-	INVALID_ENTRY_ERR,
+        INVALID_IP_ADDRESS_ERR = 0,
+        INVALID_ENTRY_ERR,
         DATABASE_ERR
 };
 static char *error_message_array [] = {
-        "Can not parse the input",
-        "Invalid data",
-        "Invalid IP address format",
-	"Can not find the IP address in the database",
-        "Can not open the database"
+        "Invalid IP address input",
+        "Can not find the IP address in the database",
+        "Can not open the GeoLiteCity Binary database. Set GEOIP_DATABASE_PATH env variable."
 };
 
 static void
 add_json_object_for_address (JsonBuilder *builder,
                              const char *name,
-                             const char *code, 
+                             const char *code,
                              const char *type)
 {
         if (!name && !code)
                 return;
         json_builder_begin_object (builder);
-        if (name)
-        {
+        if (name) {
                 json_builder_set_member_name (builder, "name");
                 json_builder_add_string_value (builder, name);
         }
-        if (code)
-        {
+        if (code) {
                 json_builder_set_member_name (builder, "code");
                 json_builder_add_string_value (builder, code);
         }
@@ -47,12 +41,30 @@ add_json_object_for_address (JsonBuilder *builder,
         json_builder_end_object (builder);
 }
 
+static void
+print_error_in_json (int error_code,
+                     const char *extra_info)
+{
+        g_print ("{\"results\":\"[error] %s",error_message_array[error_code]);
+        if (extra_info)
+                g_print (" - %s\"}\n", extra_info);
+        else
+                g_print ("\"}\n");
+}
+
 static JsonBuilder*
 add_result_attr_to_json_tree (const char* ipaddress,
-                              GeoIPRecord *gir)
+                              GeoIP *gi)
 {
         const char *timezone = NULL;
         JsonBuilder *builder;
+        GeoIPRecord *gir;
+
+        gir = GeoIP_record_by_addr (gi, ipaddress);
+        if (gir == NULL) {
+                print_error_in_json (INVALID_ENTRY_ERR, ipaddress);
+                return NULL;
+        }
 
         builder = json_builder_new ();
 
@@ -65,7 +77,7 @@ add_result_attr_to_json_tree (const char* ipaddress,
         json_builder_begin_array (builder); /* begin ipaddress array */
 
         json_builder_begin_object (builder); /* begin ipaddress object */
-  
+
         json_builder_set_member_name (builder, "location");
         json_builder_begin_object (builder); /* begin location object */
         json_builder_set_member_name (builder, "latitude");
@@ -81,7 +93,7 @@ add_result_attr_to_json_tree (const char* ipaddress,
            If NULL then don't add it to the JSON output.
         */
         add_json_object_for_address (builder, gir->city, NULL, "city");
-        add_json_object_for_address (builder, 
+        add_json_object_for_address (builder,
                                      GeoIP_region_name_by_code (gir->country_code, gir->region),
                                      gir->region,
                                      "region");
@@ -91,11 +103,72 @@ add_result_attr_to_json_tree (const char* ipaddress,
         json_builder_end_array (builder); /* end address array  */
 
         timezone = GeoIP_time_zone_by_country_and_region(gir->country_code, gir->region);
-        if (timezone)
-        {
+        if (timezone) {
                 json_builder_set_member_name (builder, "timezone");
                 json_builder_add_string_value (builder, timezone);
         }
+
+        json_builder_set_member_name (builder, "accuracy");
+        json_builder_add_string_value (builder, "city");
+
+        json_builder_set_member_name (builder, "attribution");
+        json_builder_add_string_value (builder, attribution_text);
+
+        json_builder_end_object (builder); /* end ipaddress object */
+
+        json_builder_end_array (builder); /* end ipaddress array */
+
+        json_builder_end_object (builder); /* end results object */
+
+        json_builder_end_object (builder); /* end */
+
+        GeoIPRecord_delete (gir);
+
+        return builder;
+}
+
+static JsonBuilder*
+add_result_attr_to_json_tree_geoipdb (const char* ipaddress,
+                                      GeoIP *gi)
+{
+        JsonBuilder *builder;
+        const char *country_name;
+        const char *country_code;
+
+        country_code = GeoIP_country_code_by_addr (gi, ipaddress);
+        country_name = GeoIP_country_name_by_addr (gi, ipaddress);
+
+        if (!country_name && !country_code) {
+                print_error_in_json (INVALID_ENTRY_ERR, ipaddress);
+                return NULL;
+        }
+
+        builder = json_builder_new ();
+
+        json_builder_begin_object (builder); /* begin */
+
+        json_builder_set_member_name (builder, "results");
+        json_builder_begin_object (builder); /* begin results object */
+
+        json_builder_set_member_name (builder, ipaddress);
+        json_builder_begin_array (builder); /* begin ipaddress array */
+        json_builder_begin_object (builder); /* begin ipaddress object */
+
+        json_builder_set_member_name (builder, "address");
+        json_builder_begin_array (builder); /* begin address array */
+
+        /* Before adding any entry check if that's NULL.
+           If NULL then don't add it to the JSON output.
+        */
+        add_json_object_for_address (builder,
+                                     GeoIP_country_name_by_addr (gi, ipaddress),
+                                     GeoIP_country_code_by_addr (gi, ipaddress),
+                                     "country");
+
+        json_builder_end_array (builder); /* end address array  */
+
+        json_builder_set_member_name (builder, "accuracy");
+        json_builder_add_string_value (builder, "country");
 
         json_builder_set_member_name (builder, "attribution");
         json_builder_add_string_value (builder, attribution_text);
@@ -116,116 +189,184 @@ print_json_data (JsonBuilder *builder)
 {
         JsonNode *node;
         JsonGenerator *generator;
-        gchar *json_data;
+        char *json_data;
         gsize length;
 
         node = json_builder_get_root (builder);
-  
+
         generator = json_generator_new ();
         json_generator_set_root (generator, node);
         json_data = json_generator_to_data (generator, &length);
-        g_print ("%*s\n", (int)length, json_data);
+        g_print ("%*s\n", (int) length, json_data);
 
         g_free (json_data);
         json_node_free (node);
         g_object_unref (generator);
 }
 
-static void
-print_error_in_json (int error_code, const char *extra_info)
-{
-	g_print ("{\"results\":\"[error] %s",error_message_array[error_code]);
-	if (extra_info)
-		g_print (" - %s\"}\n", extra_info);
-	else
-		g_print ("\"}\n");
-}
 
-void
-geoip_addr_lookup (const char *ipaddress)
+static void
+ip_addr_lookup (const char *ipaddress)
 {
         GeoIP *gi;
-        GeoIPRecord *gir;
         JsonBuilder *builder;
+        const char *db;
+        gboolean b_using_geoip_db = FALSE;
 
-        /*TODO : need to correct the path*/
-        gi = GeoIP_open ("../www/GeoLiteCity.dat", GEOIP_INDEX_CACHE);
-        if (gi == NULL)
-        {
+        /* TODO : the server expects a GeoLiteCity database in
+           the GEOIP_DATABASE_PATH env variable. If the env var
+           gives a GeoIp database it will return an error even
+           though the server is capable of handling the latter.
+         */
+        db = g_getenv ("GEOIP_DATABASE_PATH");
+        if (!db)
+                db = GEOIP_DATABASE_PATH "/GeoLiteCity.dat";
+
+        if (g_file_test (db, G_FILE_TEST_EXISTS) == FALSE) {
+                db = GEOIP_DATABASE_PATH "/GeoIP.dat";
+                b_using_geoip_db = TRUE;
+        }
+
+        gi = GeoIP_open (db,  GEOIP_STANDARD | GEOIP_CHECK_CACHE);
+        if (gi == NULL) {
                 print_error_in_json (DATABASE_ERR, NULL);
                 return;
         }
 
-        gir = GeoIP_record_by_addr (gi, ipaddress);
-        if (gir == NULL)
-        {
-		print_error_in_json (INVALID_ENTRY_ERR, ipaddress);
-		return;
-	}
-	/* Add the result attributes to the Json tree
-	   at present only add the latitude and longitude
-	   of the place*/
-	builder = add_result_attr_to_json_tree (ipaddress, gir);
-	print_json_data (builder);
-	GeoIPRecord_delete (gir);
-	g_object_unref (builder);
-        
+        if (b_using_geoip_db == TRUE)
+                builder = add_result_attr_to_json_tree_geoipdb (ipaddress, gi);
+        else
+                builder = add_result_attr_to_json_tree (ipaddress, gi);
+
+        if (!builder)
+                return;
+
+        print_json_data (builder);
+        g_object_unref (builder);
         GeoIP_delete (gi);
 }
 
-static gchar *
-get_ipaddress ()
+static gboolean
+validate_ip_address (const char *ipaddress)
 {
-        gchar *ipaddress;
-        const gchar *data;
-	const gchar *value;
-        GHashTable *table;
-	GInetAddress *inet_address;
-        
-	data = g_getenv ("QUERY_STRING");
-	if (data == NULL)
-        {
-                print_error_in_json (PARSE_ERR, NULL);
-                return NULL;
-        }
+        /* TODO : put a check for private ips */
+        GInetAddress *inet_address;
 
-        table = soup_form_decode (data);
-        value = g_hash_table_lookup (table, "ip");
-        if (!value)
-        {
-		value = g_getenv ("REMOTE_ADDR");
-		if (!value)
-		{
-			print_error_in_json (PARSE_ERR, NULL);
-			return NULL;
-		}
-        }
+        if (!ipaddress)
+                return FALSE;
 
-	inet_address = g_inet_address_new_from_string (value);
-        if (!inet_address)
-        {
-                print_error_in_json (INVALID_IP_ADDRESS_ERR, NULL);
-                return NULL;
+        inet_address = g_inet_address_new_from_string (ipaddress);
+        if (inet_address) {
+                g_object_unref (inet_address);
+                return TRUE;
         }
-	ipaddress = g_strdup (value);
-	g_hash_table_destroy (table);
-	g_object_unref (inet_address);
-	return ipaddress;
+        else
+                return FALSE;
 }
 
-int 
-main (void) 
+static char *
+get_ipaddress_from_query (void)
 {
-        gchar *ipaddress;
+        GHashTable *table;
+        const char *data;
+        char *value;
+
+        data = g_getenv ("QUERY_STRING");
+        if (data == NULL)
+                return NULL;
+
+        table = soup_form_decode (data);
+        value = g_strdup (g_hash_table_lookup (table, "ip"));
+        g_hash_table_destroy (table);
+
+        if (validate_ip_address (value) == TRUE)
+                return value;
+        else
+                return NULL;
+}
+
+static char *
+get_client_ipaddress (void)
+{
+        const char *data;
+        char **data_array;
+        char *value;
+        int no_of_ips;
+        int counter;
+
+        data = g_getenv ("HTTP_CLIENT_IP");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        data = g_getenv ("HTTP_X_FORWARDED_FOR");
+        if (data) {
+                data_array = g_strsplit (data, ",", 0);
+                no_of_ips = g_strv_length (data_array);
+                for (counter = 0; counter < no_of_ips; counter++) {
+                        data = data_array[counter];
+                        if (validate_ip_address (data) == TRUE) {
+                                value = g_strdup (data);
+                                g_strfreev (data_array);
+                                return value;
+                        }
+                }
+        }
+
+        data = g_getenv ("HTTP_X_FORWARDED");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        data = g_getenv ("HTTP_X_CLUSTER_CLIENT_IP");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        data = g_getenv ("HTTP_FORWARDED_FOR");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        data = g_getenv ("HTTP_FORWARDED");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        data = g_getenv ("REMOTE_ADDR");
+        if (validate_ip_address (data) == TRUE)
+                return g_strdup (data);
+
+        return NULL;
+}
+
+static char *
+get_ipaddress (void)
+{
+        char *value;
+
+        value = get_ipaddress_from_query ();
+        if (!value) {
+                value = get_client_ipaddress ();
+                if (!value) {
+                        print_error_in_json (INVALID_IP_ADDRESS_ERR, NULL);
+                        g_free (value);
+                        return NULL;
+                }
+        }
+
+        return value;
+}
+
+int
+main (void)
+{
+        char *ipaddress;
 
         g_type_init ();
 
         g_print ("Content-type: text/plain;charset=us-ascii\n\n");
-	ipaddress = get_ipaddress ();
-	if (!ipaddress)
-		return 0;
+        ipaddress = get_ipaddress ();
+        if (!ipaddress)
+                return 0;
 
-        geoip_addr_lookup (ipaddress);
-	g_free (ipaddress);
+        ip_addr_lookup (ipaddress);
+
+        g_free (ipaddress);
         return 0;
 }
