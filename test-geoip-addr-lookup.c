@@ -267,8 +267,7 @@ validate_ip_address (const char *ipaddress)
                 g_object_unref (inet_address);
                 return TRUE;
         }
-        else
-                return FALSE;
+        return FALSE;
 }
 
 static char *
