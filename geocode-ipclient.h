@@ -1,3 +1,25 @@
+/*
+   Copyright (C) 2013 Satabdi Das
+
+   The Gnome Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   The Gnome Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public
+   License along with the Gnome Library; see the file COPYING.LIB.  If not,
+   write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+   Boston, MA 02110-1301  USA.
+
+   Authors: Satabdi Das <satabdidas@gmail.com>
+
+ */
+
 #ifndef GEOCODE_IPCLIENT_H
 #define GEOCODE_IPCLIENT_H
 
@@ -40,8 +62,8 @@ struct _GeocodeIpclientClass {
         GObjectClass parent_class;
 };
 
-GeocodeIpclient *geocode_ipclient_new_for_string     (const char *str);
-GeocodeIpclient *geocode_ipclient_new_for_params     (GHashTable *params);
+GeocodeIpclient *geocode_ipclient_new           (void);
+GeocodeIpclient *geocode_ipclient_new_for_ip    (const char *str);
 
 
 void geocode_ipclient_search_async  (GeocodeIpclient       *ipclient,
