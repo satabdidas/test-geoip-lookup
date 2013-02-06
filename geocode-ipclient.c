@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <glib.h>
 #include <libsoup/soup.h>
-#include "geocode-ipclient.h"
+#include <geocode-glib/geocode-ipclient.h>
 
 /**
  * SECTION:geocode-ipclient
@@ -81,8 +81,7 @@ geocode_ipclient_new_for_ip (const char *ip)
         GeocodeIpclient *ipclient;
 
         ipclient = g_object_new (GEOCODE_TYPE_IPCLIENT, NULL);
-        if (ip)
-                ipclient->priv->ip = g_strdup (ip);
+        ipclient->priv->ip = g_strdup (ip);
 
         return ipclient;
 }
@@ -98,7 +97,7 @@ geocode_ipclient_new_for_ip (const char *ip)
  * Returns: a new #GeocodeIpclient. Use g_object_unref() when done.
  **/
 GeocodeIpclient *
-geocode_ipclient_new (const char *ip)
+geocode_ipclient_new (void)
 {
         return geocode_ipclient_new_for_ip (NULL);
 }
@@ -111,6 +110,7 @@ get_search_query (GeocodeIpclient *ipclient)
         char *query_string;
         char *uri;
         const char *ipaddress;
+        /* FIXME: the server uri needs to be made a property */
         const char *server_uri = "http://127.0.0.1:12345/cgi-bin/geoip-lookup";
 
         ipaddress = ipclient->priv->ip;
@@ -122,9 +122,8 @@ get_search_query (GeocodeIpclient *ipclient)
 
                 uri = g_strdup_printf ("%s?%s", server_uri, query_string);
                 g_free (query_string);
-        }
-        else
-                uri = g_strdup_printf ("%s", server_uri);
+        } else
+                uri = g_strdup (server_uri);
 
         ret = g_file_new_for_uri (uri);
         g_free (uri);
@@ -133,9 +132,9 @@ get_search_query (GeocodeIpclient *ipclient)
 }
 
 static void
-query_call_back (GObject        *source_forward,
-                 GAsyncResult   *res,
-                 gpointer        user_data)
+query_callback (GObject        *source_forward,
+                GAsyncResult   *res,
+                gpointer        user_data)
 {
         GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (user_data);
         GFile *query;
@@ -208,7 +207,7 @@ geocode_ipclient_search_async (GeocodeIpclient           *ipclient,
         }
         g_file_load_contents_async (query,
                                     cancellable,
-                                    query_call_back,
+                                    query_callback,
                                     simple);
         g_object_unref (query);
 }
