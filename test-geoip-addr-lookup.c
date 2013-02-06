@@ -285,10 +285,7 @@ get_ipaddress_from_query (void)
         value = g_strdup (g_hash_table_lookup (table, "ip"));
         g_hash_table_destroy (table);
 
-        if (validate_ip_address (value) == TRUE)
-                return value;
-        else
-                return NULL;
+        return value;
 }
 
 static char *
@@ -347,7 +344,14 @@ get_ipaddress (void)
         char *value;
 
         value = get_ipaddress_from_query ();
-        if (!value) {
+        if (value) {
+                if (validate_ip_address (value) == FALSE) {
+                        print_error_in_json (INVALID_IP_ADDRESS_ERR, NULL);
+                        g_free (value);
+                        return NULL;
+                }
+        }
+        else {
                 value = get_client_ipaddress ();
                 if (!value) {
                         print_error_in_json (INVALID_IP_ADDRESS_ERR, NULL);
