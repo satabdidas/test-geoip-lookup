@@ -292,49 +292,40 @@ static char *
 get_client_ipaddress (void)
 {
         const char *data;
-        char **data_array;
         char *value;
-        int no_of_ips;
-        int counter;
+        guint i;
+        static const char *variables[] = {
+                "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED_FOR",
+                "HTTP_X_FORWARDED",
+                "HTTP_X_CLUSTER_CLIENT_IP",
+                "HTTP_FORWARDED_FOR",
+                "HTTP_FORWARDED",
+                "REMOTE_ADDR",
+        };
 
-        data = g_getenv ("HTTP_CLIENT_IP");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
-        data = g_getenv ("HTTP_X_FORWARDED_FOR");
-        if (data) {
-                data_array = g_strsplit (data, ",", 0);
-                no_of_ips = g_strv_length (data_array);
-                for (counter = 0; counter < no_of_ips; counter++) {
-                        data = data_array[counter];
-                        if (validate_ip_address (data) == TRUE) {
-                                value = g_strdup (data);
+        for (i = 0; i < G_N_ELEMENTS (variables); i++) {
+                data = g_getenv (variables[i]);
+                if (g_strcmp0 (variables[i], "HTTP_X_FORWARDED_FOR") == 0) {
+                        if (data) {
+                                int j;
+                                char **data_array;
+                                data_array = g_strsplit (data, ",", 0);
+                                for (j = 0; data_array[j] != NULL; j++) {
+                                        data = data_array[j];
+                                        if (validate_ip_address (data) == TRUE) {
+                                                value = g_strdup (data);
+                                                g_strfreev (data_array);
+                                                return value;
+                                        }
+                                }
                                 g_strfreev (data_array);
-                                return value;
                         }
+                } else {
+                        if (validate_ip_address (data) == TRUE)
+                                return g_strdup (data);
                 }
         }
-
-        data = g_getenv ("HTTP_X_FORWARDED");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
-        data = g_getenv ("HTTP_X_CLUSTER_CLIENT_IP");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
-        data = g_getenv ("HTTP_FORWARDED_FOR");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
-        data = g_getenv ("HTTP_FORWARDED");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
-        data = g_getenv ("REMOTE_ADDR");
-        if (validate_ip_address (data) == TRUE)
-                return g_strdup (data);
-
         return NULL;
 }
 
